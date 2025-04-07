@@ -1,14 +1,25 @@
-from agno.agent import Agent , RunResponse
-from agno.models.ollama import Ollama
-from rich.pretty import pprint
 import streamlit as st
+from agno.agent import Agent , RunResponse
+from agno.models.openai.chat import OpenAIChat
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 from agno.tools.duckduckgo import DuckDuckGoTools
-from agno.models.ollama.tools import OllamaTools
+from agno.tools.thinking import ThinkingTools
 import fitz  # PyMuPDF
+import re
+load_dotenv()
+
+class ATSAgent(BaseModel):
+    name: str = Field(description="The name of the candidate")
+    email: str = Field(description="The email of the candidate")
+    linkedin: str = Field(description="The linkedin profile of the candidate")
+    resume: str = Field(description="The resume of the candidate")
+    ATS_score: int = Field(description="The score of the candidate")
+    job_description: str = Field(description="The job description of the job")
 
 ats_agent = Agent(
 description="An AI-powered ATS (Applicant Tracking System) expert that analyzes resumes against job descriptions using the latest parsing algorithms. Provides data-driven scoring and prioritized optimization tips to maximize interview chances.",
-    model=Ollama(id="deepseek-r1" , structured_outputs=True),
+    model=OpenAIChat(id="gpt-4o"),
     role="You are an ATS Compliance Auditor specializing in modern resume screening technologies",
  instructions=[
     "You are an expert in Applicant Tracking System (ATS) technologies specializing in PDF resume analysis.",
@@ -47,28 +58,30 @@ description="An AI-powered ATS (Applicant Tracking System) expert that analyzes 
     "Advice on formatting adjustments to ensure proper ATS parsing",
     "Recommendations for emphasizing relevant skills and experiences",
     "     - **⚠️ PDF-Specific Weaknesses:**",
-    "       - 'Text appears to be image-based (non-selectable)'",
-    "       - 'Complex layout may cause parsing errors in [ATS platform]'",
-    # "     - **🔧 Top 3 PDF Fixes:**",
-    # "       - 'Convert all text to selectable content (not images)'",
-    # "       - 'Simplify layout to single-column structure'",
-    # "       - 'Replace header [X] with standard ATS-readable format'",
-    # "3. **PDF Parsing Limitations:**",
-    # "   - Always note: 'Some ATS platforms parse PDFs less accurately than native formats'",
-    # "   - Identify text layer issues: 'Found [X]% of text that may be image-based'",
-    # "   - Recommend: 'For critical applications, verify with the [ATS platform]'s PDF parser'",
-    # "Key prohibitions:",
+    "       - 'if there is any text appears to be image-based (non-selectable) then do mention it in the report'",
+    "       - 'Check if there is Complex layout may cause parsing errors in [ATS platform]'",
+    "     - **🔧 Top 3 PDF Fixes:**",
+    "       - 'if there is any text appears to be image-based (non-selectable) then do mention it in the report'",
+    "       - 'if there is any complex layout then do mention it in the report'",
+    "       - 'if there is any non-standard headers then do mention it in the report'",
+    "3. **PDF Parsing Limitations:**",
+    "   - Always note: 'Some ATS platforms parse PDFs less accurately than native formats'",
+    "   - Identify text layer issues: 'Found [X]% of text that may be image-based'",
+    "   - Recommend: 'For critical applications, verify with the [ATS platform]'s PDF parser'",
+    "Key prohibitions:",
     "- Never suggest converting to other formats - focus only on PDF optimization",
     "- Never assume perfect PDF parsing - always account for platform-specific variances",
     "- Never overlook text layer issues in PDFs"
 ],
 tools=[
-OllamaTools(id="DuckDuckGo")
+    DuckDuckGoTools(),
+    # you can comment this out if you don't want to use the thinking tools
+    # ThinkingTools(add_instructions = True)
 ],
 markdown=True,
 show_tool_calls=True,
-# response_model=ATSAgent,
-# expected_output="A detailed report on the ATS score of the candidate"
+
+expected_output="A detailed report on the ATS score of the candidate"
 ) 
 
 def extract_text_with_pymupdf(pdf_file) -> str:
@@ -91,6 +104,12 @@ def extract_text_with_pymupdf(pdf_file) -> str:
     
     return "\n".join(text_content)
 
+def clean_text(text) -> str:
+    # Remove special characters using regular expression
+    # This keeps only alphanumeric characters and whitespace
+    cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+    return cleaned_text
+
 st.set_page_config(page_title="ATS CV Analyzer 📊")
 
 
@@ -103,5 +122,6 @@ job_description = st.text_area("Enter the job description", height=200)
 if st.button("Analyze"):
     with st.spinner("Loading..."):
         resume = extract_text_with_pymupdf(user_input)
-        response :  RunResponse = ats_agent.run(f"The Candidate Resume is :{resume}\n and the Job Description is: {job_description}")
-        st.text(response.content)
+        user_job_description = clean_text(job_description)
+        response :  RunResponse = ats_agent.run(f"The Candidate Resume is :{resume}\n and the Job Description is: {user_job_description}")
+        st.write(response.content)
