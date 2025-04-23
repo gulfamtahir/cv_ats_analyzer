@@ -14,10 +14,10 @@ In today's competitive job market, over 75% of resumes are rejected by ATS befor
 - Increase your interview callback rate by making your resume ATS-friendly
 
 ## Features
-- **Slide Upload**: Users can upload university slides or similar educational materials.
-- **Contextual Answering**: Uses Retrieval-Augmented Generation to combine slide content retrieval with answer generation.
-- **Accurate Responses**: Powered by an LLM (ChatGPT 4.0) to deliver precise and relevant answers.
-- **Easy to Use**: Simple, user-friendly interface for asking questions and viewing results.
+- **ATS Score Analysis**: The agent gives a compatibility score showing how well your resume performs against ATS filters.
+- **Keyword Optimization**: It identifies missing keywords by comparing your resume to job descriptions.
+- **Content Suggestions**: The AI suggests improvements for clarity, relevance, and impact.
+- **Industry-Specific Tips**: Offers resume tips tailored to your target job domain.
 
 ## Features
 - **ATS Score Analysis**: Get a comprehensive compatibility score for your resume
